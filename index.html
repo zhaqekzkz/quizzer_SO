@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF‑8">
+  <title>Quizzer</title>
+</head>
+<body>
+  <h1>Выбор темы</h1>
+  <select id="topicSelect">
+    <option value="Biology">Biology</option>
+    <!-- добавьте другие темы -->
+  </select>
+  <button onclick="startQuiz()">Начать тест</button>
+  
+  <div id="quizArea" style="display:none;"></div>
+  <div id="resultArea" style="display:none;"></div>
+
+  <script>
+    const scriptUrl = 'URL_ВАШЕГО_APPS_SCRIPT';
+
+    function startQuiz() {
+      const topic = document.getElementById('topicSelect').value;
+      fetch(`${scriptUrl}?topic=${encodeURIComponent(topic)}&limit=20`)
+        .then(res => res.json())
+        .then(showQuestions);
+    }
+
+    function showQuestions(questions) {
+      document.getElementById('quizArea').style.display = 'block';
+      const container = document.getElementById('quizArea');
+      container.innerHTML = '';
+      questions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+          <p>${idx+1}. ${q.question}</p>
+          ${q.options.map(opt => `
+            <label><input type="radio" name="q${idx}" value="${opt}"> ${opt}</label><br>
+          `).join('')}
+        `;
+        container.appendChild(div);
+      });
+      const btn = document.createElement('button');
+      btn.textContent = 'Отправить';
+      btn.onclick = () => submitAnswers(questions);
+      container.appendChild(btn);
+    }
+
+    function submitAnswers(questions) {
+      const answers = [];
+      let correctCount = 0;
+      questions.forEach((q, idx) => {
+        const selected = document.querySelector(`input[name="q${idx}"]:checked`);
+        const answer = selected ? selected.value : '';
+        const correct = answer === q.correct;
+        if (correct) correctCount++;
+        answers.push({questionID: q.id, selectedAnswer: answer, correct});
+      });
+      fetch(scriptUrl, {
+        method: 'POST',
+        contentType: 'application/json',
+        body: JSON.stringify({
+          studentName: prompt('Введите ваше имя:'),
+          topic: document.getElementById('topicSelect').value,
+          answers
+        })
+      }).then(() => {
+        document.getElementById('quizArea').style.display = 'none';
+        document.getElementById('resultArea').style.display = 'block';
+        document.getElementById('resultArea').textContent =
+          `Ваш результат: ${correctCount} из ${questions.length}.`;
+      });
+    }
+  </script>
+</body>
+</html>
